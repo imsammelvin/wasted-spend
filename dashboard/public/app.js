@@ -4,7 +4,15 @@ const $ = (s) => document.querySelector(s);
 const tooltip = $('#tooltip');
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-const fmt$ = (v, d = 4) => '$' + Number(v || 0).toFixed(d);
+// adaptive: cents-scale gets 2-3 decimals, micro-costs keep enough to be nonzero
+const fmt$ = (v) => {
+  const n = Number(v || 0);
+  if (n === 0) return '$0.00';
+  if (n >= 100) return '$' + n.toFixed(0);
+  if (n >= 1) return '$' + n.toFixed(2);
+  if (n >= 0.01) return '$' + n.toFixed(3);
+  return '$' + n.toFixed(5);
+};
 const fmtMs = (v) => (v >= 1000 ? (v / 1000).toFixed(1) + ' s' : Math.round(v) + ' ms');
 const fmtK = (v) => (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v)));
 const ago = (iso) => {
@@ -167,16 +175,54 @@ function renderRootCauses(rows) {
 
 /* ── recent requests ── */
 let selectedTrace = null;
+
+/* input is LiteLLM's messages JSON; surface the user's actual question */
+function promptPreview(raw) {
+  if (!raw) return '–';
+  let text = raw;
+  try {
+    const parsed = JSON.parse(raw);
+    const msgs = Array.isArray(parsed) ? parsed : parsed.messages || [];
+    const user = [...msgs].reverse().find((m) => m.role === 'user');
+    if (user) text = typeof user.content === 'string' ? user.content
+      : (user.content || []).map((p) => p.text || '').join(' ');
+  } catch { /* not JSON — show raw */ }
+  // loadgen prompts carry a RAG context block; show what follows it
+  const q = text.split('answer the following question.').pop().trim();
+  return q.replace(/\s+/g, ' ');
+}
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+/* output is LiteLLM's assistant message JSON ({role, content} or plain text) */
+function outputPreview(raw) {
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === 'string') return parsed;
+    if (parsed.content) return typeof parsed.content === 'string' ? parsed.content
+      : parsed.content.map((p) => p.text || '').join(' ');
+    if (Array.isArray(parsed)) return parsed.map((m) => m.content || '').join(' ');
+  } catch { /* plain text */ }
+  return raw;
+}
+
 function renderRecent(rows) {
-  $('#recent tbody').innerHTML = rows.length ? rows.map((r) => `
+  $('#recent tbody').innerHTML = rows.length ? rows.map((r) => {
+    const q = promptPreview(r.raw_input);
+    const a = outputPreview(r.raw_output).replace(/\s+/g, ' ');
+    return `
     <tr data-id="${r.trace_id}" class="${r.trace_id === selectedTrace ? 'selected' : ''}">
       <td>${ago(r.t)}</td>
       <td>${(r.model || '–').replace(/^.*\//, '')}</td>
+      <td class="prompt-cell" title="${esc(q.slice(0, 400))}&#10;&#10;→ ${esc(a.slice(0, 400))}">
+        <div class="q">${esc(q.slice(0, 70))}${q.length > 70 ? '…' : ''}</div>
+        <div class="ans">${a ? '→ ' + esc(a.slice(0, 70)) + (a.length > 70 ? '…' : '') : ''}</div>
+      </td>
       <td class="num">${r.llm_calls}${+r.errors ? ` <span class="badge-err">⚠${r.errors}</span>` : ''}</td>
       <td class="num">${fmt$(r.cost_usd)}</td>
       <td class="num">${fmtMs(+r.max_ms)}</td>
-      <td class="mono">${r.trace_id.slice(0, 8)}…</td>
-    </tr>`).join('')
+    </tr>`;
+  }).join('')
     : '<tr><td colspan="6" class="empty">No traffic in the last 2 hours. Start the loadgen: <span class="mono">node loadgen/loadgen.ts</span></td></tr>';
   document.querySelectorAll('#recent tbody tr[data-id]').forEach((tr) =>
     tr.addEventListener('click', () => loadWaterfall(tr.dataset.id)));

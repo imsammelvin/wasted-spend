@@ -21,11 +21,14 @@ model_list:
       api_key: os.environ/GEMINI_API_KEY
 
   # Zero-cost pipeline testing: real request/response flow, canned completion.
+  # Priced as gpt-4o (Langfuse prices by model name; the call itself is mocked,
+  # so actual spend is $0) and long enough (~350 tokens) to look like a real
+  # answer — demo economics without demo bills.
   - model_name: mock-gpt
     litellm_params:
-      model: openai/gpt-4o-mini
+      model: openai/gpt-4o
       api_key: mock-key
-      mock_response: 'Mock response from the wasted-spend pipeline. All plumbing between LibreChat, LiteLLM and Langfuse is working.'
+      mock_response: 'Based on the documents you provided, here is a detailed breakdown of the situation. The primary driver of the behavior you are describing is the interaction between the retrieval layer and the generation step: when the vector search returns a large candidate set, the reranker expands the context window substantially, which increases both latency and token consumption downstream. In practical terms, this means that every additional retrieved chunk adds roughly two hundred to four hundred tokens of prompt context, and the model must attend over all of it before producing the first output token. There are three concrete steps you can take to improve this. First, tighten the retrieval top-k parameter and apply a similarity threshold so that marginal, low-relevance chunks never reach the prompt at all; most workloads see no quality loss with a top-k of five and a cosine threshold around 0.75. Second, enable response streaming so perceived latency drops even when total generation time is unchanged; users judge responsiveness by time-to-first-token far more than by total completion time. Third, consider caching embeddings for frequently asked queries, since repeated retrieval of identical content is pure waste both in compute and in dollars. If you implement all three, a typical deployment sees prompt sizes drop by forty to sixty percent, p95 latency improve by a factor of two, and cost per request fall proportionally. Let me know if you would like a worked example for any of these steps, including the specific configuration parameters and a before-and-after comparison of token counts, latency percentiles, and per-request cost so you can validate the improvement against your own traffic.'
 
 litellm_settings:
   success_callback: ['langfuse']

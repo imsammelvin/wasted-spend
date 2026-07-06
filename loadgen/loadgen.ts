@@ -50,6 +50,20 @@ const PROMPTS = [
   'How do vector databases work, briefly?',
 ];
 
+// Realistic request size: real AI-app prompts carry RAG context, history and
+// system instructions (500–2000 prompt tokens), not one bare question. This
+// block (~450 tokens) rides along with every prompt so token counts and costs
+// look like production traffic. Mock model → $0 actual spend regardless.
+const CONTEXT_BLOCK = `
+
+--- retrieved context (3 documents) ---
+[doc 1] Quarterly infrastructure review: The platform served 41M requests in Q2 with a p95 latency of 340ms. Vector search accounted for 22% of request time on RAG-enabled routes. The embedding cache hit rate averaged 61%, leaving significant headroom; every cache miss adds an embedding call and roughly 80ms. Retry rates spiked twice, correlating with deploys on May 14 and June 3, both of which regressed connection pooling in the retrieval service.
+[doc 2] Cost allocation report: LLM spend is now the second-largest infrastructure line item after compute. Average cost per assisted conversation rose 18% quarter over quarter, driven primarily by longer retrieved contexts (mean prompt size grew from 1,100 to 1,600 tokens) rather than by traffic growth. Duplicate generations from client-side retries were estimated at 4-7% of total generation volume but were not directly measurable with current tooling.
+[doc 3] Incident postmortem 2026-06-03: A schema migration locked the metadata table for 41 seconds. Downstream, the retrieval service exhausted its connection pool, and user-facing requests timed out. Clients retried, tripling LLM call volume for the duration. Total incident cost was estimated afterwards by joining billing exports against request logs, a process that took two engineers most of a day.
+--- end context ---
+
+Using the context above where relevant, answer the following question. `;
+
 const stats = { sent: 0, ok: 0, timeouts: 0, retries: 0, errors: 0, scored: 0 };
 let halted = false;
 
@@ -152,7 +166,7 @@ async function userLoop(): Promise<void> {
       if (convoId === null || Math.random() < CFG.newConvoPct) convoId = null; // new convo → title generation
       // nonce: distinct requests never hash-collide; genuine retries (same prompt
       // object re-sent below) DO — that's exactly what wasted-spend dedup keys on
-      const prompt = `${pick(PROMPTS)} [req ${crypto.randomUUID().slice(0, 8)}]`;
+      const prompt = `${CONTEXT_BLOCK}${pick(PROMPTS)} [req ${crypto.randomUUID().slice(0, 8)}]`;
 
       // impatient client: send, wait up to patienceS, re-send on timeout
       for (let attempt = 0; attempt <= CFG.maxRetries && !halted; attempt++) {

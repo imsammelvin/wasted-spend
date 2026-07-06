@@ -56,20 +56,30 @@ const QUERIES: Record<string, (p: URLSearchParams) => string> = {
     FROM wasted_spend_by_root_cause
     LIMIT 8`,
 
-  // recent stitched requests (click one → waterfall)
+  // recent stitched requests (click one → waterfall), with the prompt itself
   recent: () => `
-    SELECT trace_id,
-           min(start_time)                    AS t,
-           round(sum(cost_usd), 6)            AS cost_usd,
-           sum(total_tokens)                  AS tokens,
-           countIf(layer = 'llm')             AS llm_calls,
-           round(max(duration_ms))            AS max_ms,
-           anyIf(model, model != '')          AS model,
-           countIf(status = 'ERROR')          AS errors
-    FROM unified_spans
-    WHERE match(trace_id, '^[0-9a-f]{32}$') AND start_time > now() - INTERVAL 2 HOUR
-    GROUP BY trace_id
-    HAVING llm_calls > 0
+    WITH spans AS (
+        SELECT trace_id, min(start_time) AS t, round(max(duration_ms)) AS max_ms
+        FROM unified_spans
+        WHERE match(trace_id, '^[0-9a-f]{32}$') AND start_time > now() - INTERVAL 2 HOUR
+        GROUP BY trace_id
+    ),
+    llm AS (
+        SELECT trace_id,
+               round(sum(toFloat64(coalesce(total_cost, 0))), 6) AS cost_usd,
+               sum(usage_details['total'])                       AS tokens,
+               count()                                           AS llm_calls,
+               anyIf(provided_model_name, provided_model_name IS NOT NULL) AS model,
+               countIf(level = 'ERROR')                          AS errors,
+               substring(argMin(coalesce(input, ''), start_time), 1, 3000) AS raw_input,
+               substring(argMax(coalesce(output, ''), start_time), 1, 2000) AS raw_output
+        FROM observations FINAL
+        WHERE start_time > now() - INTERVAL 2 HOUR AND type = 'GENERATION'
+        GROUP BY trace_id
+    )
+    SELECT trace_id, t, cost_usd, tokens, llm_calls, max_ms, model, errors, raw_input, raw_output
+    FROM llm
+    INNER JOIN spans USING (trace_id)
     ORDER BY t DESC
     LIMIT 15`,
 

@@ -87,6 +87,11 @@ td b { font-family: var(--mono); }
 #recent tbody tr:hover { background: var(--ring); }
 #recent tbody tr.selected { background: var(--ring); box-shadow: inset 2px 0 0 var(--infra); }
 .badge-err { color: var(--critical); font-family: var(--mono); font-size: 11px; }
+.prompt-cell { max-width: 230px; font-size: 12px; }
+.prompt-cell .q, .prompt-cell .ans { white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; }
+.prompt-cell .q { color: var(--ink); }
+.prompt-cell .ans { color: var(--muted); font-size: 11.5px; }
 .empty { color: var(--muted); font-size: 12.5px; padding: 14px 0; }
 
 /* ── waterfall ── */
