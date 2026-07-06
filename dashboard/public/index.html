@@ -3,72 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wasted Spend — full-stack AI observability</title>
+<title>Wasted Spend — every AI incident gets a price tag</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
-  <h1>Wasted Spend</h1>
-  <span class="sub">every AI incident gets a price tag — one ClickHouse, one JOIN</span>
-  <span id="live" class="live">● live</span>
+  <div>
+    <h1>WASTED<span class="accent">SPEND</span></h1>
+    <div class="tagline">infra-attributed LLM cost · one ClickHouse · one JOIN</div>
+  </div>
+  <span id="live" class="live"><span class="dot"></span>live · 2s</span>
 </header>
 
 <main>
-  <!-- hero: the money shot -->
-  <section class="hero panel">
-    <div class="hero-num">
-      <div class="label">WASTED SPEND TODAY</div>
-      <div id="wasted-usd" class="big">$0.0000</div>
-      <div id="wasted-sub" class="label sub2">0 duplicate calls · 0 tokens burned</div>
+  <!-- ══ HERO: the burn ══ -->
+  <section class="panel hero">
+    <div class="hero-left">
+      <div class="eyebrow">wasted today</div>
+      <div id="wasted-usd" class="burn-figure">$0.0000</div>
+      <div class="hero-stats">
+        <span><b id="h-dups">0</b> duplicate calls</span>
+        <span><b id="h-tokens">0</b> tokens burned</span>
+        <span><b id="h-rate">$0/min</b> burn rate now</span>
+      </div>
     </div>
-    <div class="hero-chart">
-      <div class="label">wasted $ / minute — last 30 min</div>
-      <svg id="wasted-chart" viewBox="0 0 560 120" preserveAspectRatio="none"></svg>
+    <div class="hero-right">
+      <div class="burnbar-head">
+        <span class="eyebrow">share of today's LLM spend</span>
+        <span id="burn-pct" class="burn-pct">0%</span>
+      </div>
+      <div class="burnbar" title="today's total LLM spend; red = wasted">
+        <div id="burnbar-waste" class="burnbar-waste"></div>
+      </div>
+      <div class="burnbar-legend">
+        <span><i class="sw spend"></i>spend <b id="h-spend">$0</b></span>
+        <span><i class="sw waste"></i>wasted <b id="h-waste2">$0</b></span>
+      </div>
+      <div class="eyebrow chart-title">burn per minute · last 30 min</div>
+      <svg id="wasted-chart" viewBox="0 0 640 96"></svg>
     </div>
-    <details><summary>powered by this query</summary><pre id="sql-wasted_total"></pre><pre id="sql-wasted_series"></pre></details>
+    <details class="sql"><summary>SQL</summary><pre id="sql-wasted_total"></pre><pre id="sql-wasted_series"></pre></details>
   </section>
 
-  <!-- four golden signals -->
+  <!-- ══ four golden signals ══ -->
+  <div class="eyebrow section-title">the four golden signals of AI apps · last 30 min</div>
   <section class="tiles">
-    <div class="panel tile"><div class="label">LATENCY p95 (infra / llm)</div><div class="val"><span id="t-lat-infra">–</span> <span class="muted">/</span> <span id="t-lat-llm">–</span></div></div>
-    <div class="panel tile"><div class="label">COST / MIN</div><div class="val" id="t-cost">–</div></div>
-    <div class="panel tile"><div class="label">AVG QUALITY (1–10)</div><div class="val" id="t-quality">–</div></div>
-    <div class="panel tile"><div class="label">GENERATIONS / REQUEST</div><div class="val" id="t-loops">–</div></div>
+    <div class="panel tile">
+      <div class="eyebrow">latency p95</div>
+      <div class="val"><span id="t-lat-infra" class="c-infra">–</span><span class="of">infra</span><span id="t-lat-llm" class="c-llm">–</span><span class="of">llm</span></div>
+      <svg class="spark" id="sp-lat" viewBox="0 0 150 30"></svg>
+    </div>
+    <div class="panel tile">
+      <div class="eyebrow">cost</div>
+      <div class="val"><span id="t-cost">–</span><span class="of">30 min</span></div>
+      <svg class="spark" id="sp-cost" viewBox="0 0 150 30"></svg>
+    </div>
+    <div class="panel tile">
+      <div class="eyebrow">quality <span class="of">avg score /10</span></div>
+      <div class="val"><span id="t-quality">–</span><span class="of" id="t-quality-n"></span></div>
+      <svg class="spark" id="sp-q" viewBox="0 0 150 30"></svg>
+    </div>
+    <div class="panel tile">
+      <div class="eyebrow">loops <span class="of">generations / request</span></div>
+      <div class="val"><span id="t-loops">–</span><span class="of" id="t-errors"></span></div>
+      <svg class="spark" id="sp-loops" viewBox="0 0 150 30"></svg>
+    </div>
   </section>
 
+  <!-- ══ latency, both worlds ══ -->
   <section class="panel">
-    <div class="label">latency p95 — <span class="chip infra">infra</span> vs <span class="chip llm">llm</span> — last 30 min</div>
-    <svg id="latency-chart" viewBox="0 0 1160 140" preserveAspectRatio="none"></svg>
-    <details><summary>powered by this query</summary><pre id="sql-golden"></pre></details>
+    <div class="panel-head">
+      <span class="eyebrow">request latency p95 — <i class="sw infra"></i>infra (ClickStack) vs <i class="sw llm"></i>llm (Langfuse)</span>
+    </div>
+    <svg id="latency-chart" viewBox="0 0 1200 170"></svg>
+    <details class="sql"><summary>SQL</summary><pre id="sql-golden"></pre></details>
   </section>
 
   <div class="cols">
     <!-- root causes -->
     <section class="panel">
-      <div class="label">WASTED SPEND BY ROOT CAUSE — ranked by dollars</div>
+      <div class="panel-head"><span class="eyebrow">wasted spend by root cause</span>
+        <span class="hint">ranked by dollars — the query no single tool can run</span></div>
       <table id="root-causes"><thead><tr>
-        <th>root cause</th><th>incidents</th><th>dup calls</th><th>wasted $</th><th>worst span</th>
+        <th>root cause</th><th class="num">wasted</th><th class="num">dup calls</th><th class="num">worst span</th><th class="share-col">share</th>
       </tr></thead><tbody></tbody></table>
-      <details><summary>powered by this query</summary><pre id="sql-root_causes"></pre></details>
+      <details class="sql"><summary>SQL</summary><pre id="sql-root_causes"></pre></details>
     </section>
 
     <!-- recent requests -->
     <section class="panel">
-      <div class="label">RECENT REQUESTS — click one to open its waterfall</div>
+      <div class="panel-head"><span class="eyebrow">recent requests</span>
+        <span class="hint">click a row → its full-stack waterfall</span></div>
       <table id="recent"><thead><tr>
-        <th>time</th><th>model</th><th>llm calls</th><th>cost $</th><th>slowest ms</th><th></th>
+        <th>when</th><th>model</th><th class="num">calls</th><th class="num">cost</th><th class="num">slowest</th><th>trace</th>
       </tr></thead><tbody></tbody></table>
-      <details><summary>powered by this query</summary><pre id="sql-recent"></pre></details>
+      <details class="sql"><summary>SQL</summary><pre id="sql-recent"></pre></details>
     </section>
   </div>
 
-  <!-- the unified waterfall -->
+  <!-- ══ the unified waterfall ══ -->
   <section class="panel" id="waterfall-panel" hidden>
-    <div class="label">UNIFIED WATERFALL — trace <span id="wf-trace" class="mono"></span>
-      — <span class="chip infra">infra (ClickStack)</span> <span class="chip llm">llm (Langfuse)</span>
-      <span class="muted">· one trace_id, both worlds</span></div>
+    <div class="panel-head">
+      <span class="eyebrow">one request, both worlds — trace <span id="wf-trace" class="mono accent2"></span></span>
+      <span class="hint"><i class="sw infra"></i>infra · <i class="sw llm"></i>llm · same trace_id</span>
+    </div>
+    <div id="wf-summary" class="wf-summary"></div>
+    <div id="wf-ruler" class="wf-ruler"></div>
     <div id="waterfall"></div>
-    <details><summary>powered by this query</summary><pre id="sql-waterfall"></pre></details>
+    <details class="sql"><summary>SQL</summary><pre id="sql-waterfall"></pre></details>
   </section>
 </main>
 

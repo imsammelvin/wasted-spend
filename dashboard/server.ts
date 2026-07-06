@@ -22,13 +22,18 @@ const HEX32 = /^[0-9a-f]{32}$/;
 
 // ── the only SQL the browser can trigger ────────────────────────────────────
 const QUERIES: Record<string, (p: URLSearchParams) => string> = {
-  // hero: wasted spend today + climbing counter
+  // hero: wasted spend today vs total spend today (the burn share)
   wasted_total: () => `
-    SELECT round(sum(wasted_usd), 6)  AS wasted_usd,
-           sum(wasted_tokens)         AS wasted_tokens,
-           sum(duplicate_calls)       AS duplicate_calls
-    FROM wasted_spend_per_minute
-    WHERE minute >= toStartOfDay(now())`,
+    SELECT
+      (SELECT round(coalesce(sum(wasted_usd), 0), 6) FROM wasted_spend_per_minute
+        WHERE minute >= toStartOfDay(now()))                             AS wasted_usd,
+      (SELECT coalesce(sum(wasted_tokens), 0) FROM wasted_spend_per_minute
+        WHERE minute >= toStartOfDay(now()))                             AS wasted_tokens,
+      (SELECT coalesce(sum(duplicate_calls), 0) FROM wasted_spend_per_minute
+        WHERE minute >= toStartOfDay(now()))                             AS duplicate_calls,
+      (SELECT round(coalesce(sum(toFloat64(coalesce(total_cost, 0))), 0), 6)
+        FROM observations FINAL
+        WHERE start_time >= toStartOfDay(now()) AND type = 'GENERATION') AS spend_usd`,
 
   // wasted $ per minute, last 30 minutes
   wasted_series: () => `
