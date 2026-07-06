@@ -260,6 +260,24 @@ services:
       - vectordb
     restart: unless-stopped
 
+  # ─────────────────────── RCA agent tools (MCP server for LibreChat agents) ───────────────────────
+  rca-tools:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install --omit=dev --no-fund --no-audit >/dev/null 2>&1 && node server.ts"
+    environment:
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_RO_USER: ro_viewer
+      CLICKHOUSE_RO_PASSWORD: wastedspend_ro
+    volumes:
+      - ./agent:/app
+    ports:
+      - 127.0.0.1:8100:8100 # host access for debugging; LibreChat reaches it internally
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ─────────────────────── LiteLLM proxy (the interception point) ───────────────────────
   litellm:
     image: ghcr.io/berriai/litellm:main-stable

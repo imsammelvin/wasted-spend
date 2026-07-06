@@ -1,6 +1,18 @@
 version: 1.2.1
 cache: true
 
+# RCA agent tools — the unified ClickHouse as an MCP tool (agent/server.ts)
+# rca-tools is a docker-internal hostname → private IP, so it must be
+# explicitly allowlisted past LibreChat's SSRF protection
+mcpSettings:
+  allowedDomains:
+    - 'http://rca-tools:8100'
+mcpServers:
+  wasted-spend:
+    type: streamable-http
+    url: http://rca-tools:8100/mcp
+    timeout: 30000
+
 endpoints:
   custom:
     - name: 'LiteLLM'
