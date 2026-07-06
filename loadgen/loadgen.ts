@@ -150,7 +150,9 @@ async function userLoop(): Promise<void> {
     try {
       token ??= await login();
       if (convoId === null || Math.random() < CFG.newConvoPct) convoId = null; // new convo → title generation
-      const prompt = pick(PROMPTS);
+      // nonce: distinct requests never hash-collide; genuine retries (same prompt
+      // object re-sent below) DO — that's exactly what wasted-spend dedup keys on
+      const prompt = `${pick(PROMPTS)} [req ${crypto.randomUUID().slice(0, 8)}]`;
 
       // impatient client: send, wait up to patienceS, re-send on timeout
       for (let attempt = 0; attempt <= CFG.maxRetries && !halted; attempt++) {
