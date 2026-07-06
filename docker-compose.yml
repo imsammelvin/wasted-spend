@@ -1,0 +1,277 @@
+# Wasted Spend — full-stack AI observability demo (Click-a-thon 2026)
+#
+# ONE ClickHouse serves both worlds:
+#   • ClickStack collector writes otel_traces / otel_logs / otel_metrics_* → default db
+#   • Langfuse v3 writes traces / observations / scores               → default db
+# Correlation = a JOIN inside this single database. That's the thesis.
+#
+# UIs:  LibreChat :3080 │ Langfuse :3000 │ HyperDX :8080 │ LiteLLM :4000
+# OTLP: :4317 (gRPC) / :4318 (HTTP)      │ ClickHouse: localhost:8123 / :9000
+
+name: wasted-spend
+
+services:
+  # ─────────────────────── shared ClickHouse ───────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.5-alpine
+    environment:
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ch_data:/var/lib/clickhouse
+      - ch_logs:/var/log/clickhouse-server
+    ports:
+      - 127.0.0.1:8123:8123 # HTTP
+      - 127.0.0.1:9000:9000 # native
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  # ─────────────────────── ClickStack (HyperDX) ───────────────────────
+  otel-collector:
+    image: docker.clickhouse.com/clickhouse/clickstack-otel-collector:2
+    environment:
+      CLICKHOUSE_ENDPOINT: 'tcp://clickhouse:9000?dial_timeout=10s'
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE: default
+      HYPERDX_OTEL_EXPORTER_CREATE_LEGACY_SCHEMA: 'true'
+      HYPERDX_LOG_LEVEL: info
+      OPAMP_SERVER_URL: 'http://hyperdx:4320'
+    ports:
+      - 4317:4317 # OTLP gRPC
+      - 4318:4318 # OTLP HTTP
+      - 127.0.0.1:13133:13133 # health check
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  hyperdx:
+    image: docker.hyperdx.io/hyperdx/hyperdx:2
+    ports:
+      - 8080:8080 # app UI
+      - 127.0.0.1:8000:8000 # api
+    environment:
+      FRONTEND_URL: http://localhost:8080
+      HYPERDX_API_PORT: 8000
+      HYPERDX_APP_PORT: 8080
+      HYPERDX_APP_URL: http://localhost
+      HYPERDX_LOG_LEVEL: info
+      MONGO_URI: 'mongodb://hyperdx-db:27017/hyperdx'
+      SERVER_URL: http://127.0.0.1:8000
+      OPAMP_PORT: 4320
+      USAGE_STATS_ENABLED: 'false'
+      DEFAULT_CONNECTIONS: '[{"name":"Shared ClickHouse","host":"http://clickhouse:8123","username":"default","password":"${CLICKHOUSE_PASSWORD}"}]'
+      DEFAULT_SOURCES: '[{"from":{"databaseName":"default","tableName":"otel_logs"},"kind":"log","timestampValueExpression":"Timestamp","name":"Logs","displayedTimestampValueExpression":"Timestamp","implicitColumnExpression":"Body","serviceNameExpression":"ServiceName","bodyExpression":"Body","eventAttributesExpression":"LogAttributes","resourceAttributesExpression":"ResourceAttributes","defaultTableSelectExpression":"Timestamp,ServiceName,SeverityText,Body","severityTextExpression":"SeverityText","traceIdExpression":"TraceId","spanIdExpression":"SpanId","connection":"Shared ClickHouse","traceSourceId":"Traces","sessionSourceId":"Sessions","metricSourceId":"Metrics"},{"from":{"databaseName":"default","tableName":"otel_traces"},"kind":"trace","timestampValueExpression":"Timestamp","name":"Traces","displayedTimestampValueExpression":"Timestamp","implicitColumnExpression":"SpanName","serviceNameExpression":"ServiceName","eventAttributesExpression":"SpanAttributes","resourceAttributesExpression":"ResourceAttributes","defaultTableSelectExpression":"Timestamp,ServiceName,StatusCode,round(Duration/1e6),SpanName","traceIdExpression":"TraceId","spanIdExpression":"SpanId","durationExpression":"Duration","durationPrecision":9,"parentSpanIdExpression":"ParentSpanId","spanNameExpression":"SpanName","spanKindExpression":"SpanKind","statusCodeExpression":"StatusCode","statusMessageExpression":"StatusMessage","connection":"Shared ClickHouse","logSourceId":"Logs","sessionSourceId":"Sessions","metricSourceId":"Metrics"},{"from":{"databaseName":"default","tableName":""},"kind":"metric","timestampValueExpression":"TimeUnix","name":"Metrics","resourceAttributesExpression":"ResourceAttributes","metricTables":{"gauge":"otel_metrics_gauge","histogram":"otel_metrics_histogram","sum":"otel_metrics_sum"},"connection":"Shared ClickHouse","logSourceId":"Logs","traceSourceId":"Traces","sessionSourceId":"Sessions"},{"from":{"databaseName":"default","tableName":"hyperdx_sessions"},"kind":"session","timestampValueExpression":"TimestampTime","name":"Sessions","displayedTimestampValueExpression":"Timestamp","implicitColumnExpression":"Body","serviceNameExpression":"ServiceName","bodyExpression":"Body","eventAttributesExpression":"LogAttributes","resourceAttributesExpression":"ResourceAttributes","defaultTableSelectExpression":"Timestamp,ServiceName,SeverityText,Body","severityTextExpression":"SeverityText","traceIdExpression":"TraceId","spanIdExpression":"SpanId","connection":"Shared ClickHouse","logSourceId":"Logs","traceSourceId":"Traces","metricSourceId":"Metrics"}]'
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      hyperdx-db:
+        condition: service_started
+    restart: unless-stopped
+
+  hyperdx-db:
+    image: mongo:5.0.32-focal
+    volumes:
+      - hdx_mongo:/data/db
+    restart: unless-stopped
+
+  # ─────────────────────── Langfuse v3 ───────────────────────
+  langfuse-worker:
+    image: docker.io/langfuse/langfuse-worker:3
+    restart: unless-stopped
+    depends_on: &langfuse-depends-on
+      langfuse-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:3030:3030
+    environment: &langfuse-worker-env
+      NEXTAUTH_URL: http://localhost:3000
+      DATABASE_URL: postgresql://postgres:postgres@langfuse-postgres:5432/postgres
+      SALT: ${LANGFUSE_SALT}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY}
+      TELEMETRY_ENABLED: 'false'
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_CLUSTER_ENABLED: 'false'
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: 'true'
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+      LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+      LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9090
+      LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: 'true'
+      LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+      REDIS_HOST: langfuse-redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: ${REDIS_AUTH}
+
+  langfuse-web:
+    image: docker.io/langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on: *langfuse-depends-on
+    ports:
+      - 3000:3000
+    environment:
+      <<: *langfuse-worker-env
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
+      # Headless provisioning: org/project/API keys exist on first boot,
+      # so LiteLLM can log to Langfuse with zero UI clicks.
+      LANGFUSE_INIT_ORG_ID: anarix
+      LANGFUSE_INIT_ORG_NAME: Anarix
+      LANGFUSE_INIT_PROJECT_ID: wasted-spend
+      LANGFUSE_INIT_PROJECT_NAME: Wasted Spend
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_ADMIN_EMAIL}
+      LANGFUSE_INIT_USER_NAME: Admin
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_ADMIN_PASSWORD}
+
+  langfuse-postgres:
+    image: docker.io/postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - langfuse_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  langfuse-redis:
+    image: docker.io/redis:7
+    restart: unless-stopped
+    command: --requirepass ${REDIS_AUTH} --maxmemory-policy noeviction
+    volumes:
+      - langfuse_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio
+    restart: unless-stopped
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - 127.0.0.1:9090:9000
+      - 127.0.0.1:9091:9001
+    volumes:
+      - langfuse_minio:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 1s
+      timeout: 5s
+      retries: 5
+      start_period: 1s
+
+  # ─────────────────────── LibreChat (the app under observation) ───────────────────────
+  librechat:
+    image: registry.librechat.ai/danny-avila/librechat-dev:latest
+    ports:
+      - 3080:3080
+    environment:
+      HOST: 0.0.0.0
+      MONGO_URI: mongodb://chat-mongodb:27017/LibreChat
+      RAG_PORT: 8000
+      RAG_API_URL: http://rag_api:8000
+    volumes:
+      - ./librechat/.env:/app/.env
+      - ./librechat/librechat.yaml:/app/librechat.yaml
+    depends_on:
+      - chat-mongodb
+      - rag_api
+      - litellm
+    restart: unless-stopped
+
+  chat-mongodb:
+    image: mongo:8.0
+    command: mongod --noauth
+    volumes:
+      - chat_mongo:/data/db
+    restart: unless-stopped
+
+  # RAG stack — deliberate: "slow vector search" is the demo villain (toxiproxy goes in front of vectordb in Phase 6)
+  vectordb:
+    image: pgvector/pgvector:0.8.0-pg15-trixie
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  rag_api:
+    image: registry.librechat.ai/danny-avila/librechat-rag-api-dev-lite:latest
+    environment:
+      DB_HOST: vectordb
+      RAG_PORT: 8000
+    env_file:
+      - ./librechat/.env
+    depends_on:
+      - vectordb
+    restart: unless-stopped
+
+  # ─────────────────────── LiteLLM proxy (the interception point) ───────────────────────
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ['--config', '/app/config.yaml', '--port', '4000', '--num_workers', '1']
+    ports:
+      - 4000:4000
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_HOST: http://langfuse-web:3000
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml
+    depends_on:
+      langfuse-web:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  ch_data:
+  ch_logs:
+  hdx_mongo:
+  langfuse_pg:
+  langfuse_redis:
+  langfuse_minio:
+  chat_mongo:
+  pgvector_data:

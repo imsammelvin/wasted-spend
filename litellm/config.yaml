@@ -1,0 +1,25 @@
+model_list:
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Zero-cost pipeline testing: real request/response flow, canned completion.
+  - model_name: mock-gpt
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: mock-key
+      mock_response: 'Mock response from the wasted-spend pipeline. All plumbing between LibreChat, LiteLLM and Langfuse is working.'
+
+litellm_settings:
+  success_callback: ['langfuse']
+  failure_callback: ['langfuse']
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
