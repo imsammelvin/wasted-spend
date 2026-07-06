@@ -267,7 +267,6 @@ services:
     ports:
       - 4000:4000
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-unset}
       GROQ_API_KEY: ${GROQ_API_KEY:-unset}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-unset}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}

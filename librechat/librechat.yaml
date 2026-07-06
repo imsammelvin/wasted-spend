@@ -7,7 +7,7 @@ endpoints:
       apiKey: '${LITELLM_MASTER_KEY}'
       baseURL: 'http://litellm:4000/v1'
       models:
-        default: ['llama-3.3-70b', 'gemini-flash', 'gpt-4o-mini', 'mock-gpt']
+        default: ['llama-3.3-70b', 'gemini-flash', 'mock-pro']
         fetch: true
       titleConvo: true
       titleModel: 'llama-3.3-70b'

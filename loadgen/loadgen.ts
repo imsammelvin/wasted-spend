@@ -21,7 +21,7 @@ const CFG = {
   baseUrl: env('LOADGEN_BASE_URL', 'http://localhost:3080'),
   email: env('LOADGEN_EMAIL', 'loadgen@anarix.ai'),
   password: env('LOADGEN_PASSWORD', 'WastedSpend!2026'),
-  model: env('LOADGEN_MODEL', 'mock-gpt'),
+  model: env('LOADGEN_MODEL', 'mock-pro'),
   users: Number(env('LOADGEN_USERS', '3')),
   thinkS: Number(env('LOADGEN_THINK_S', '2')),
   patienceS: Number(env('LOADGEN_PATIENCE_S', '30')),
