@@ -38,8 +38,10 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       Gotchas solved: CH healthcheck must use 127.0.0.1; OTLP ingestion requires
       `authorization: $HYPERDX_INGESTION_API_KEY` and only works after the first
       HyperDX user exists (bootstrap: register user → key in Mongo → .env).
-- [~] Phase 1 — telemetry flowing (OTel→ClickStack ✓, LiteLLM→Langfuse ✓, loadgen ✓ —
-      10-min sustained-load exit criterion in progress). Facts learned:
+- [x] Phase 1 — telemetry flowing (OTel→ClickStack, LiteLLM→Langfuse, loadgen).
+      Exit run: 10 min @ 1.08 req/s, 646 sent / 643 ok, 0 timeouts; one 64-error burst
+      (LibreChat message rate-limiter, self-recovered). Data: 168k otel spans,
+      809 langfuse traces, 655 scores. Facts learned:
       • failed LLM calls log level='ERROR', 0 tokens, NULL cost in Langfuse → waste
         dollars come from duplicated *successful* calls (loadgen's impatient-client retry)
       • LibreChat re-assigns client messageIds server-side; loadgen detects replies
