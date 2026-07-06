@@ -133,7 +133,9 @@ lat AS (
     GROUP BY minute
 ),
 cost AS (
-    SELECT minute, round(sumMerge(cost), 6) AS cost_usd, sumMerge(tokens) AS tokens,
+    -- NB: aliases must not equal source column names (sumMerge(tokens) AS tokens
+    -- self-shadows under the analyzer and breaks the Merge combinator)
+    SELECT minute, round(sumMerge(cost), 6) AS cost_usd, sumMerge(tokens) AS token_total,
            countMerge(calls) AS llm_calls, sumMerge(errors) AS llm_errors
     FROM golden_cost_1m GROUP BY minute
 ),
@@ -142,15 +144,15 @@ qual AS (
     FROM golden_quality_1m GROUP BY minute
 ),
 loops AS (
-    SELECT minute, countMerge(gens) AS gens, uniqMerge(reqs) AS requests,
+    SELECT minute, countMerge(gens) AS gen_calls, uniqMerge(reqs) AS requests,
            round(countMerge(gens) / uniqMerge(reqs), 2) AS gens_per_request
     FROM golden_loops_1m GROUP BY minute
 )
 SELECT minute,
        infra_p95_ms, llm_p95_ms,
-       cost_usd, tokens, llm_calls, llm_errors,
+       cost_usd, token_total AS tokens, llm_calls, llm_errors,
        avg_quality, low_scores,
-       gens, requests, gens_per_request
+       gen_calls AS gens, requests, gens_per_request
 FROM cost
 FULL JOIN lat   USING (minute)
 FULL JOIN qual  USING (minute)

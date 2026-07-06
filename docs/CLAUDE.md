@@ -53,7 +53,14 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       LiteLLM async_pre_call_hook (litellm/custom_callbacks.py) reading traceparent.
       INNER JOIN otel_traces ↔ traces works; v_stitch_fallback (ASOF) as insurance.
       See docs/stitch.md + sql/02_stitch_verification.sql.
-- [ ] Phase 3 — unified SQL layer (views, golden-signal MVs, wasted_spend, impossible query)
+- [x] Phase 3 — unified SQL layer ✅ sql/10 unified_spans view; sql/20 four golden-signal
+      MVs (AggregatingMergeTree + golden_signals_1m reader); sql/30 wasted_spend v2
+      (success-rank duplicates by prompt hash, root cause from FIRST attempt's trace,
+      ERROR rows = signal not cost) + by_root_cause + per_minute; sql/40 impossible query.
+      All exit gates run: applied from scratch, live MV updates, wasted_spend nonzero
+      under induced retry storm ($0.018 / 27 dups / 8.6k tokens, ranked root causes).
+      Gotchas: CH alias self-shadowing breaks *Merge (sumMerge(x) AS x); langfuse tables
+      are ReplacingMergeTree → read with FINAL where correctness matters.
 - [ ] Phase 4 — dashboard + unified waterfall
 - [ ] Phase 5 — RCA agent in LibreChat
 - [ ] Phase 6 — 1B-row synthetic dataset + chaos scripts
