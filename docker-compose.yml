@@ -28,7 +28,8 @@ services:
       - 127.0.0.1:8123:8123 # HTTP
       - 127.0.0.1:9000:9000 # native
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      # 127.0.0.1, not localhost: busybox wget prefers ::1 and CH listens on IPv4 only
+      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1
       interval: 5s
       timeout: 5s
       retries: 20
@@ -254,7 +255,9 @@ services:
     ports:
       - 4000:4000
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-unset}
+      GROQ_API_KEY: ${GROQ_API_KEY:-unset}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-unset}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}

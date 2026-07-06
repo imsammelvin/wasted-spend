@@ -9,6 +9,17 @@ model_list:
       model: openai/text-embedding-3-small
       api_key: os.environ/OPENAI_API_KEY
 
+  # Free-tier providers — set GROQ_API_KEY or GEMINI_API_KEY in .env, no card needed.
+  - model_name: llama-3.3-70b
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+  - model_name: gemini-flash
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
   # Zero-cost pipeline testing: real request/response flow, canned completion.
   - model_name: mock-gpt
     litellm_params:
