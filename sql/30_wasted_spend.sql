@@ -31,9 +31,17 @@ SELECT *,
     -- the user needed, rank > 1 = pure duplicate = waste
     row_number() OVER (PARTITION BY prompt_hash, (level = 'ERROR')
                        ORDER BY start_time) AS success_rank,
-    (level != 'ERROR' AND row_number() OVER (
-        PARTITION BY prompt_hash, (level = 'ERROR')
-        ORDER BY start_time) > 1)            AS is_waste
+    lagInFrame(start_time) OVER (PARTITION BY prompt_hash, (level = 'ERROR')
+                                 ORDER BY start_time) AS prev_same_prompt,
+    -- a duplicate must follow its predecessor within 30 min: client retries
+    -- cluster tightly; a same-text question hours later is a new request
+    (level != 'ERROR'
+     AND row_number() OVER (PARTITION BY prompt_hash, (level = 'ERROR')
+                            ORDER BY start_time) > 1
+     AND dateDiff('minute',
+                  lagInFrame(start_time) OVER (PARTITION BY prompt_hash, (level = 'ERROR')
+                                               ORDER BY start_time),
+                  start_time) < 30)          AS is_waste
 FROM gens;
 
 -- Waste grouped per incident (one prompt_hash = one user request storyline)
@@ -50,9 +58,7 @@ SELECT prompt_hash,
        groupArrayIf(3)(trace_id, is_waste)      AS duplicate_trace_ids
 FROM wasted_generations
 GROUP BY prompt_hash
-HAVING duplicate_calls > 0
-   -- retries cluster tightly; guards against accidental hash collisions
-   AND dateDiff('minute', min(start_time), max(start_time)) < 30;
+HAVING duplicate_calls > 0;   -- window guard lives in is_waste (per-row, 30 min)
 
 -- Ranked root causes with $ totals — THE demo table.
 -- Culprit = slowest non-middleware span in the FIRST attempt's trace.

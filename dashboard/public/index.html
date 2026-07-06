@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wasted Spend — full-stack AI observability</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Wasted Spend</h1>
+  <span class="sub">every AI incident gets a price tag — one ClickHouse, one JOIN</span>
+  <span id="live" class="live">● live</span>
+</header>
+
+<main>
+  <!-- hero: the money shot -->
+  <section class="hero panel">
+    <div class="hero-num">
+      <div class="label">WASTED SPEND TODAY</div>
+      <div id="wasted-usd" class="big">$0.0000</div>
+      <div id="wasted-sub" class="label sub2">0 duplicate calls · 0 tokens burned</div>
+    </div>
+    <div class="hero-chart">
+      <div class="label">wasted $ / minute — last 30 min</div>
+      <svg id="wasted-chart" viewBox="0 0 560 120" preserveAspectRatio="none"></svg>
+    </div>
+    <details><summary>powered by this query</summary><pre id="sql-wasted_total"></pre><pre id="sql-wasted_series"></pre></details>
+  </section>
+
+  <!-- four golden signals -->
+  <section class="tiles">
+    <div class="panel tile"><div class="label">LATENCY p95 (infra / llm)</div><div class="val"><span id="t-lat-infra">–</span> <span class="muted">/</span> <span id="t-lat-llm">–</span></div></div>
+    <div class="panel tile"><div class="label">COST / MIN</div><div class="val" id="t-cost">–</div></div>
+    <div class="panel tile"><div class="label">AVG QUALITY (1–10)</div><div class="val" id="t-quality">–</div></div>
+    <div class="panel tile"><div class="label">GENERATIONS / REQUEST</div><div class="val" id="t-loops">–</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="label">latency p95 — <span class="chip infra">infra</span> vs <span class="chip llm">llm</span> — last 30 min</div>
+    <svg id="latency-chart" viewBox="0 0 1160 140" preserveAspectRatio="none"></svg>
+    <details><summary>powered by this query</summary><pre id="sql-golden"></pre></details>
+  </section>
+
+  <div class="cols">
+    <!-- root causes -->
+    <section class="panel">
+      <div class="label">WASTED SPEND BY ROOT CAUSE — ranked by dollars</div>
+      <table id="root-causes"><thead><tr>
+        <th>root cause</th><th>incidents</th><th>dup calls</th><th>wasted $</th><th>worst span</th>
+      </tr></thead><tbody></tbody></table>
+      <details><summary>powered by this query</summary><pre id="sql-root_causes"></pre></details>
+    </section>
+
+    <!-- recent requests -->
+    <section class="panel">
+      <div class="label">RECENT REQUESTS — click one to open its waterfall</div>
+      <table id="recent"><thead><tr>
+        <th>time</th><th>model</th><th>llm calls</th><th>cost $</th><th>slowest ms</th><th></th>
+      </tr></thead><tbody></tbody></table>
+      <details><summary>powered by this query</summary><pre id="sql-recent"></pre></details>
+    </section>
+  </div>
+
+  <!-- the unified waterfall -->
+  <section class="panel" id="waterfall-panel" hidden>
+    <div class="label">UNIFIED WATERFALL — trace <span id="wf-trace" class="mono"></span>
+      — <span class="chip infra">infra (ClickStack)</span> <span class="chip llm">llm (Langfuse)</span>
+      <span class="muted">· one trace_id, both worlds</span></div>
+    <div id="waterfall"></div>
+    <details><summary>powered by this query</summary><pre id="sql-waterfall"></pre></details>
+  </section>
+</main>
+
+<div id="tooltip" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
