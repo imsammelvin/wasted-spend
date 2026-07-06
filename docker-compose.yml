@@ -202,7 +202,7 @@ services:
 
   # ─────────────────────── LibreChat (the app under observation) ───────────────────────
   librechat:
-    image: registry.librechat.ai/danny-avila/librechat-dev:latest
+    build: ./librechat # upstream image + OTel packages (see librechat/Dockerfile — not a fork)
     ports:
       - 3080:3080
     environment:
@@ -210,6 +210,18 @@ services:
       MONGO_URI: mongodb://chat-mongodb:27017/LibreChat
       RAG_PORT: 8000
       RAG_API_URL: http://rag_api:8000
+      # OTel auto-instrumentation → ClickStack collector
+      # exact file path: absolute --require bypasses the package's exports map
+      NODE_OPTIONS: --require /otel/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js
+      OTEL_SERVICE_NAME: librechat
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_HEADERS: authorization=${HYPERDX_INGESTION_API_KEY}
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      # keep noisy instrumentations off; fs/dns spam Node apps
+      OTEL_NODE_DISABLED_INSTRUMENTATIONS: fs,dns,net
     volumes:
       - ./librechat/.env:/app/.env
       - ./librechat/librechat.yaml:/app/librechat.yaml

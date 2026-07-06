@@ -11,5 +11,7 @@ RUN mkdir /otel && cd /otel && npm init -y >/dev/null \
 USER node
 
 # Activated via absolute path so module resolution never depends on /app:
-#   NODE_OPTIONS=--require /otel/node_modules/@opentelemetry/auto-instrumentations-node/register
+#   NODE_OPTIONS=--require /otel/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js
 # (set in docker-compose.yml together with OTEL_* env vars)
+# NB: must be the real file — an absolute path bypasses the package exports map,
+# so ".../auto-instrumentations-node/register" does NOT resolve.

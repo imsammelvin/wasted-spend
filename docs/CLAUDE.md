@@ -33,8 +33,20 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
 
 ## Current status
 <!-- UPDATE THIS SECTION AS PHASES COMPLETE -->
-- [ ] Phase 0 — environment (docker compose, all services healthy, schema inventory)
-- [ ] Phase 1 — telemetry flowing (OTel→ClickStack, LiteLLM→Langfuse, loadgen)
+- [x] Phase 0 — environment (docker compose, all services healthy, schema inventory)
+      One shared ClickHouse 26.5; both worlds in the `default` db. See sql/00_inventory.md.
+      Gotchas solved: CH healthcheck must use 127.0.0.1; OTLP ingestion requires
+      `authorization: $HYPERDX_INGESTION_API_KEY` and only works after the first
+      HyperDX user exists (bootstrap: register user → key in Mongo → .env).
+- [~] Phase 1 — telemetry flowing (OTel→ClickStack ✓, LiteLLM→Langfuse ✓, loadgen ✓ —
+      10-min sustained-load exit criterion in progress). Facts learned:
+      • failed LLM calls log level='ERROR', 0 tokens, NULL cost in Langfuse → waste
+        dollars come from duplicated *successful* calls (loadgen's impatient-client retry)
+      • LibreChat re-assigns client messageIds server-side; loadgen detects replies
+        by snapshot-diffing finished assistant messages
+      • LibreChat API needs a browser-like User-Agent (uaParser middleware)
+      • free-tier Groq/Gemini keys produce real $ costs (Langfuse prices from its
+        model table × tokens) — no OpenAI needed
 - [ ] Phase 2 — THE STITCH (fallback ASOF join first, then shared trace_id) ⚠ highest risk
 - [ ] Phase 3 — unified SQL layer (views, golden-signal MVs, wasted_spend, impossible query)
 - [ ] Phase 4 — dashboard + unified waterfall
