@@ -276,6 +276,7 @@ services:
       LANGFUSE_HOST: http://langfuse-web:3000
     volumes:
       - ./litellm/config.yaml:/app/config.yaml
+      - ./litellm/custom_callbacks.py:/app/custom_callbacks.py
     depends_on:
       langfuse-web:
         condition: service_started

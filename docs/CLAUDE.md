@@ -49,7 +49,10 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       • LibreChat API needs a browser-like User-Agent (uaParser middleware)
       • free-tier Groq/Gemini keys produce real $ costs (Langfuse prices from its
         model table × tokens) — no OpenAI needed
-- [ ] Phase 2 — THE STITCH (fallback ASOF join first, then shared trace_id) ⚠ highest risk
+- [x] Phase 2 — THE STITCH ✅ 100% stitch rate. Langfuse trace id == OTel trace id via
+      LiteLLM async_pre_call_hook (litellm/custom_callbacks.py) reading traceparent.
+      INNER JOIN otel_traces ↔ traces works; v_stitch_fallback (ASOF) as insurance.
+      See docs/stitch.md + sql/02_stitch_verification.sql.
 - [ ] Phase 3 — unified SQL layer (views, golden-signal MVs, wasted_spend, impossible query)
 - [ ] Phase 4 — dashboard + unified waterfall
 - [ ] Phase 5 — RCA agent in LibreChat
