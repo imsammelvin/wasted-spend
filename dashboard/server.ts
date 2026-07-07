@@ -25,11 +25,11 @@ const QUERIES: Record<string, (p: URLSearchParams) => string> = {
   // hero: wasted spend today vs total spend today (the burn share)
   wasted_total: () => `
     SELECT
-      (SELECT round(coalesce(sum(wasted_usd), 0), 6) FROM wasted_spend_per_minute
+      (SELECT round(coalesce(sum(wasted_usd), 0), 6) FROM wasted_spend_per_minute_24h
         WHERE minute >= toStartOfDay(now()))                             AS wasted_usd,
-      (SELECT coalesce(sum(wasted_tokens), 0) FROM wasted_spend_per_minute
+      (SELECT coalesce(sum(wasted_tokens), 0) FROM wasted_spend_per_minute_24h
         WHERE minute >= toStartOfDay(now()))                             AS wasted_tokens,
-      (SELECT coalesce(sum(duplicate_calls), 0) FROM wasted_spend_per_minute
+      (SELECT coalesce(sum(duplicate_calls), 0) FROM wasted_spend_per_minute_24h
         WHERE minute >= toStartOfDay(now()))                             AS duplicate_calls,
       (SELECT round(coalesce(sum(toFloat64(coalesce(total_cost, 0))), 0), 6)
         FROM observations FINAL
@@ -38,7 +38,7 @@ const QUERIES: Record<string, (p: URLSearchParams) => string> = {
   // wasted $ per minute, last 30 minutes
   wasted_series: () => `
     SELECT minute, wasted_usd, duplicate_calls
-    FROM wasted_spend_per_minute
+    FROM wasted_spend_per_minute_24h
     WHERE minute > now() - INTERVAL 30 MINUTE
     ORDER BY minute`,
 
@@ -53,7 +53,7 @@ const QUERIES: Record<string, (p: URLSearchParams) => string> = {
   // ranked root causes with dollars — THE table
   root_causes: () => `
     SELECT root_cause, incidents, duplicate_calls, wasted_usd, wasted_tokens, worst_span_ms
-    FROM wasted_spend_by_root_cause
+    FROM wasted_spend_by_root_cause_24h
     LIMIT 8`,
 
   // recent stitched requests (click one → waterfall), with the prompt itself

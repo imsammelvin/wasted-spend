@@ -207,7 +207,7 @@ services:
       - 3080:3080
     environment:
       HOST: 0.0.0.0
-      MONGO_URI: mongodb://chat-mongodb:27017/LibreChat
+      MONGO_URI: mongodb://toxiproxy:24001/LibreChat # via chaos switchboard
       RAG_PORT: 8000
       RAG_API_URL: http://rag_api:8000
       # OTel auto-instrumentation → ClickStack collector
@@ -258,6 +258,18 @@ services:
       - ./librechat/.env
     depends_on:
       - vectordb
+    restart: unless-stopped
+
+  # ─────────────────────── toxiproxy (the chaos switchboard) ───────────────────────
+  # LibreChat reaches LiteLLM and Mongo THROUGH these proxies; transparent until
+  # loadgen/chaos.sh adds latency/timeout toxics. That's the live-break machinery.
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    command: ['-host', '0.0.0.0', '-config', '/config/toxiproxy.json']
+    volumes:
+      - ./loadgen/toxiproxy.json:/config/toxiproxy.json:ro
+    ports:
+      - 127.0.0.1:8474:8474 # control API (chaos.sh talks to this)
     restart: unless-stopped
 
   # ─────────────────────── RCA agent tools (MCP server for LibreChat agents) ───────────────────────

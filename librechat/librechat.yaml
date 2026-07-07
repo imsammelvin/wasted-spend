@@ -17,7 +17,7 @@ endpoints:
   custom:
     - name: 'LiteLLM'
       apiKey: '${LITELLM_MASTER_KEY}'
-      baseURL: 'http://litellm:4000/v1'
+      baseURL: 'http://toxiproxy:24000/v1' # → litellm, via the chaos switchboard
       models:
         # mock-pro: unlimited/$0 (canned reply) — the fallback when free tiers 429
         default: ['mock-pro', 'llama-3.1-8b', 'llama-3.3-70b', 'gemini-flash']

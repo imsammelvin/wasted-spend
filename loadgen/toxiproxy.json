@@ -1,0 +1,14 @@
+[
+  {
+    "name": "litellm",
+    "listen": "0.0.0.0:24000",
+    "upstream": "litellm:4000",
+    "enabled": true
+  },
+  {
+    "name": "mongo",
+    "listen": "0.0.0.0:24001",
+    "upstream": "chat-mongodb:27017",
+    "enabled": true
+  }
+]
