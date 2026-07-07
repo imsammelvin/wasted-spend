@@ -5,6 +5,12 @@ neither can see that a slow database caused a cost spike. Both store in ClickHou
 so we made them share one database and one trace id. Correlation is an INNER JOIN,
 and on top of the join we compute a metric neither tool can: Wasted Spend."*
 
+**The stitch line, for observability engineers (when asked "how"):** *"Every request
+already has an OpenTelemetry trace. We simply preserve that trace context through
+LiteLLM into Langfuse — no ID generation, no sync service, no timestamp matching.
+Infra spans and LLM spans share one distributed trace, the way W3C Trace Context
+was designed to work. Zero forks: a Dockerfile layer and a 40-line callback."*
+
 ## Pre-demo checklist (T-30 min)
 
 ```bash
