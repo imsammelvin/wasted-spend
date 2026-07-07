@@ -61,7 +61,12 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       under induced retry storm ($0.018 / 27 dups / 8.6k tokens, ranked root causes).
       Gotchas: CH alias self-shadowing breaks *Merge (sumMerge(x) AS x); langfuse tables
       are ReplacingMergeTree → read with FINAL where correctness matters.
-- [ ] Phase 4 — dashboard + unified waterfall
+- [x] Phase 4 — dashboard + unified waterfall ✅ burn console (dashboard/, TS zero-dep,
+      :8090): burn-bar hero (waste as % of spend), golden tiles + sparklines, root-cause
+      share bars, prompt+answer request table, waterfall w/ ruler (renders in 38ms — gate
+      was <1s); counter climbs <60s under fault ✓; every panel shows its SQL; reads CH via
+      ro_viewer. Demo economics: mock-pro priced as gemini-2.5-pro, RAG-sized prompts.
+      Deferred (optional): fallback dashboards inside HyperDX itself — do in Phase 7 prep.
 - [x] Phase 5 — RCA agent ✅ "Cost Detective" LibreChat agent + MCP server (agent/server.ts,
       streamable-http, tools: query_clickhouse + get_schema, ro_viewer user). Verified:
       scripted incident Q answered with real trace_ids + $ (matches views to 4 decimals);
