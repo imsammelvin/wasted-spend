@@ -19,7 +19,7 @@ const env = (k: string, d: string) => process.env[k] ?? d;
 
 const CFG = {
   baseUrl: env('LOADGEN_BASE_URL', 'http://localhost:3080'),
-  email: env('LOADGEN_EMAIL', 'loadgen@anarix.ai'),
+  email: env('LOADGEN_EMAIL', 'sammelvin2232002@gmail.com'),
   password: env('LOADGEN_PASSWORD', 'WastedSpend!2026'),
   model: env('LOADGEN_MODEL', 'mock-pro'),
   users: Number(env('LOADGEN_USERS', '3')),

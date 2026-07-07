@@ -141,8 +141,8 @@ services:
       NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET}
       # Headless provisioning: org/project/API keys exist on first boot,
       # so LiteLLM can log to Langfuse with zero UI clicks.
-      LANGFUSE_INIT_ORG_ID: anarix
-      LANGFUSE_INIT_ORG_NAME: Anarix
+      LANGFUSE_INIT_ORG_ID: wasted-spend-org
+      LANGFUSE_INIT_ORG_NAME: Wasted Spend
       LANGFUSE_INIT_PROJECT_ID: wasted-spend
       LANGFUSE_INIT_PROJECT_NAME: Wasted Spend
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
@@ -271,6 +271,7 @@ services:
       CLICKHOUSE_RO_PASSWORD: wastedspend_ro
     volumes:
       - ./agent:/app
+      - /app/node_modules # container-private: keeps `npm install --omit=dev` from pruning host devDeps
     ports:
       - 127.0.0.1:8100:8100 # host access for debugging; LibreChat reaches it internally
     depends_on:

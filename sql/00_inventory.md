@@ -95,5 +95,5 @@ so any model with a known price list yields $ figures regardless of what we actu
 - Langfuse ingestion is async (redis → worker → S3 → ClickHouse); rows appear within
   ~5–15 s of the API call. Don't panic during verification.
 - `Duration` in otel_traces is nanoseconds; Langfuse times are DateTime64(3) (ms).
-- Langfuse UI login: `tech@anarix.ai` / password in `.env`. HyperDX login: same email,
-  same password (registered via API).
+- UI logins (Langfuse, HyperDX, LibreChat): `sammelvin2232002@gmail.com` /
+  password in `.env` (`LANGFUSE_ADMIN_PASSWORD` — same everywhere).

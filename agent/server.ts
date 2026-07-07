@@ -71,29 +71,36 @@ async function clickhouse(sql: string): Promise<string> {
 function buildMcp(): McpServer {
   const mcp = new McpServer({ name: 'wasted-spend-rca', version: '1.0.0' });
 
-  mcp.tool(
+  mcp.registerTool(
     'query_clickhouse',
-    'Run a read-only SQL query against the unified observability ClickHouse ' +
-      '(infra spans + LLM calls + costs + quality scores, joined by trace_id). ' +
-      'SELECT only — the database user cannot write. Call get_schema first if unsure.',
-    { sql: z.string().describe('One ClickHouse SELECT statement. No trailing semicolon needed.') },
+    {
+      description:
+        'Run a read-only SQL query against the unified observability ClickHouse ' +
+        '(infra spans + LLM calls + costs + quality scores, joined by trace_id). ' +
+        'SELECT only — the database user cannot write. Call get_schema first if unsure.',
+      inputSchema: {
+        sql: z.string().describe('One ClickHouse SELECT statement. No trailing semicolon needed.'),
+      },
+    },
     async ({ sql }) => {
       const clean = sql.trim().replace(/;+\s*$/, '');
       if (/;/.test(clean)) throw new Error('One statement per call.');
       try {
-        return { content: [{ type: 'text', text: await clickhouse(clean) }] };
+        return { content: [{ type: 'text' as const, text: await clickhouse(clean) }] };
       } catch (e) {
         // return errors as content so the model can self-correct its SQL
-        return { content: [{ type: 'text', text: String(e) }], isError: true };
+        return { content: [{ type: 'text' as const, text: String(e) }], isError: true };
       }
     },
   );
 
-  mcp.tool(
+  mcp.registerTool(
     'get_schema',
-    'The unified observability schema: views, tables, columns, and the Wasted Spend definition.',
-    {},
-    async () => ({ content: [{ type: 'text', text: SCHEMA_DOC }] }),
+    {
+      description:
+        'The unified observability schema: views, tables, columns, and the Wasted Spend definition.',
+    },
+    async () => ({ content: [{ type: 'text' as const, text: SCHEMA_DOC }] }),
   );
 
   return mcp;
