@@ -62,6 +62,13 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       Gotchas: CH alias self-shadowing breaks *Merge (sumMerge(x) AS x); langfuse tables
       are ReplacingMergeTree → read with FINAL where correctness matters.
 - [ ] Phase 4 — dashboard + unified waterfall
-- [ ] Phase 5 — RCA agent in LibreChat
+- [x] Phase 5 — RCA agent ✅ "Cost Detective" LibreChat agent + MCP server (agent/server.ts,
+      streamable-http, tools: query_clickhouse + get_schema, ro_viewer user). Verified:
+      scripted incident Q answered with real trace_ids + $ (matches views to 4 decimals);
+      survived unscripted Q; recursion proven (agent's own calls in observations with
+      tool_call_names). Gotchas: ENDPOINTS must include `agents` or ALL agent tools are
+      silently disabled; mcpSettings.allowedDomains needed for docker-internal MCP hosts;
+      Gemini free tier = 20 req/DAY (agent runs on groq llama-3.3-70b).
+      Recreate agent: node agent/create-agent.ts (idempotent).
 - [ ] Phase 6 — 1B-row synthetic dataset + chaos scripts
 - [ ] Phase 7 — upstream PR, demo rehearsal, slides
