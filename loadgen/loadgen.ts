@@ -21,9 +21,11 @@ const CFG = {
   baseUrl: env('LOADGEN_BASE_URL', 'http://localhost:3080'),
   email: env('LOADGEN_EMAIL', 'wastedspend.demo@gmail.com'),
   password: env('LOADGEN_PASSWORD', 'WastedSpend!2026'),
-  model: env('LOADGEN_MODEL', 'mock-pro'),
-  users: Number(env('LOADGEN_USERS', '3')),
-  thinkS: Number(env('LOADGEN_THINK_S', '2')),
+  // real model by default; watch Groq's ~30 req/min free tier (each message
+  // also costs a title-gen call). mock-pro remains available for volume runs.
+  model: env('LOADGEN_MODEL', 'llama-3.3-70b'),
+  users: Number(env('LOADGEN_USERS', '2')),
+  thinkS: Number(env('LOADGEN_THINK_S', '6')),
   patienceS: Number(env('LOADGEN_PATIENCE_S', '30')),
   maxRetries: Number(env('LOADGEN_MAX_RETRIES', '2')),
   newConvoPct: Number(env('LOADGEN_NEW_CONVO_PCT', '0.15')),
@@ -165,8 +167,11 @@ async function userLoop(): Promise<void> {
       token ??= await login();
       if (convoId === null || Math.random() < CFG.newConvoPct) convoId = null; // new convo → title generation
       // nonce: distinct requests never hash-collide; genuine retries (same prompt
-      // object re-sent below) DO — that's exactly what wasted-spend dedup keys on
-      const prompt = `${CONTEXT_BLOCK}${pick(PROMPTS)} [req ${crypto.randomUUID().slice(0, 8)}]`;
+      // object re-sent below) DO — that's exactly what wasted-spend dedup keys on.
+      // The fat RAG context only rides on the mock model (realism for free);
+      // real models get lean prompts so free-tier token quotas last.
+      const ctx = CFG.model.startsWith('mock') ? CONTEXT_BLOCK : '';
+      const prompt = `${ctx}${pick(PROMPTS)} [req ${crypto.randomUUID().slice(0, 8)}]`;
 
       // impatient client: send, wait up to patienceS, re-send on timeout
       for (let attempt = 0; attempt <= CFG.maxRetries && !halted; attempt++) {

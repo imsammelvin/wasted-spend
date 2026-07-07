@@ -5,6 +5,12 @@ model_list:
       model: groq/llama-3.3-70b-versatile
       api_key: os.environ/GROQ_API_KEY
 
+  # separate (larger) free-tier daily quota than the 70b — use for titles & light chat
+  - model_name: llama-3.1-8b
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_key: os.environ/GROQ_API_KEY
+
   - model_name: gemini-flash
     litellm_params:
       model: gemini/gemini-2.5-flash
