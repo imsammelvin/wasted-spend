@@ -23,7 +23,7 @@ CH_PASSWORD=$(grep '^CLICKHOUSE_PASSWORD=' .env | cut -d= -f2)
 ch() { docker compose exec -T clickhouse clickhouse-client --password "$CH_PASSWORD" \
         --max_memory_usage 1800000000 --max_insert_threads 2 --max_threads 4 -n "$@"; }
 
-CHUNKS=4  # each day's span insert split into quarters — keeps peak RAM low on small VMs
+CHUNKS=8  # small chunks — the 7.7GB VM kernel OOM-kills big batch inserts
 
 TRACES_PER_DAY=$(( SPANS_PER_DAY / SPANS_PER_TRACE ))
 LLM_TRACES_PER_DAY=$(( TRACES_PER_DAY / 8 ))          # 12.5% of traces hit the LLM

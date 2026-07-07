@@ -75,5 +75,16 @@ the shared trace_id) → one ClickHouse → our SQL layer (`/sql/`) → dashboar
       silently disabled; mcpSettings.allowedDomains needed for docker-internal MCP hosts;
       Gemini free tier = 20 req/DAY (agent runs on groq llama-3.3-70b).
       Recreate agent: node agent/create-agent.ts (idempotent).
-- [ ] Phase 6 — 1B-row synthetic dataset + chaos scripts
-- [ ] Phase 7 — upstream PR, demo rehearsal, slides
+- [x] Phase 6 — synthetic history + chaos ✅ loadgen/synthesize.sh (resumable, chunked,
+      diurnal + incident windows, stitched trace ids; sized 3 days × 8M spans = 33M by
+      user request — 1B attempt OOM-killed the 7.7GB VM twice; scale knobs documented).
+      toxiproxy switchboard (librechat→litellm & →mongo) + loadgen/chaos.sh
+      {slow-llm, slow-db, timeout, heal} + deploy_events markers. Exit gates run:
+      fault→waste visible <90s w/ named root cause; clean recovery. Scale fixes:
+      _24h dashboard views, semi-join culprits, Duration>1s prefilter in sql/40,
+      ro_viewer memory cap. Numbers: MV polls 10ms, root-cause 24h 130ms,
+      full-history 1.2s, impossible query 1.5s @ 33M spans.
+- [x] Phase 7 — demo & ecosystem ✅ docs/demo.md (3-min script + checklists + kill
+      switches), docs/slides.md (6 slides), docs/upstream-librechat-otel.md (ready-to-post
+      PR/issue). REMAINING FOR HUMANS: post the upstream issue/PR, flip repo public,
+      rehearse ×3, record backup run, optional HyperDX fallback dashboard.

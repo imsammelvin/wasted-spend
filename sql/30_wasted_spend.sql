@@ -65,15 +65,19 @@ HAVING duplicate_calls > 0;   -- window guard lives in is_waste (per-row, 30 min
 CREATE OR REPLACE VIEW wasted_spend_by_root_cause AS
 WITH culprit AS (
     -- bare HTTP client spans are named just 'POST' — append the URL so the
-    -- root-cause table reads "slow: POST http://litellm:4000/v1/chat/completions"
+    -- root-cause table reads "slow: POST http://litellm:4000/v1/chat/completions".
+    -- Semi-join on the (small) waste set: never group the whole span table.
     SELECT TraceId AS first_trace_id,
            argMax(concat(SpanName,
-                         if(SpanAttributes['url.full'] != '',
+                         if(SpanAttributes['url.full'] != ''
+                            AND position(SpanName, SpanAttributes['url.full']) = 0,
                             concat(' ', SpanAttributes['url.full']), '')),
                   Duration)               AS slowest_span,
            round(max(Duration) / 1e6)     AS slowest_ms
     FROM otel_traces
-    WHERE SpanName NOT LIKE 'middleware%' AND SpanName NOT LIKE 'request handler%'
+    WHERE TraceId IN (SELECT first_trace_id FROM wasted_spend)
+      AND SpanKind != 'Server' -- entry span contains everything: symptom, not cause
+      AND SpanName NOT LIKE 'middleware%' AND SpanName NOT LIKE 'request handler%'
     GROUP BY TraceId
 )
 SELECT
@@ -155,13 +159,15 @@ WITH waste AS (
 culprit AS (
     SELECT TraceId AS first_trace_id,
            argMax(concat(SpanName,
-                         if(SpanAttributes['url.full'] != '',
+                         if(SpanAttributes['url.full'] != ''
+                            AND position(SpanName, SpanAttributes['url.full']) = 0,
                             concat(' ', SpanAttributes['url.full']), '')),
                   Duration)               AS slowest_span,
            round(max(Duration) / 1e6)     AS slowest_ms
     FROM otel_traces
     WHERE Timestamp > now() - INTERVAL 25 HOUR
       AND TraceId IN (SELECT first_trace_id FROM waste)   -- semi-join: only suspect traces
+      AND SpanKind != 'Server' -- entry span contains everything: symptom, not cause
       AND SpanName NOT LIKE 'middleware%' AND SpanName NOT LIKE 'request handler%'
     GROUP BY TraceId
 )

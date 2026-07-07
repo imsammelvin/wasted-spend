@@ -33,13 +33,16 @@ quality AS (
     WHERE timestamp > now() - INTERVAL 7 DAY AND name = 'quality'
     GROUP BY trace_id
 ),
--- infra side: slowest meaningful span per request
+-- infra side: slowest meaningful span per request.
+-- Duration > 1s prefilter = the query's own threshold, pushed down: at tens of
+-- millions of spans this turns a full-table aggregation into a sparse one.
 infra AS (
     SELECT TraceId AS trace_id,
            argMax(SpanName, Duration)    AS slowest_span,
            round(max(Duration) / 1e6)    AS slowest_ms
     FROM otel_traces
     WHERE Timestamp > now() - INTERVAL 7 DAY
+      AND Duration > 1000000000          -- > 1 s, in nanoseconds
       AND SpanName NOT LIKE 'middleware%'
     GROUP BY TraceId
 )
