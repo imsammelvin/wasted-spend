@@ -3,7 +3,7 @@
  *  Run on host:  node create-agent.ts  (LibreChat on localhost:3080) */
 
 const BASE = process.env.LIBRECHAT_URL ?? 'http://localhost:3080';
-const EMAIL = process.env.LOADGEN_EMAIL ?? 'sammelvin2232002@gmail.com';
+const EMAIL = process.env.LOADGEN_EMAIL ?? 'wastedspend.demo@gmail.com';
 const PASSWORD = process.env.LOADGEN_PASSWORD ?? 'WastedSpend!2026';
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
