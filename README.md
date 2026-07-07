@@ -36,36 +36,29 @@ API keys — [Groq](https://console.groq.com) and [Google AI Studio](https://ais
 ```bash
 git clone https://github.com/imsammelvin/wasted-spend && cd wasted-spend
 
-# 1. secrets
-cp .env.example .env          # fill in: openssl rand -hex 32 for the hex slots,
-                              # your GROQ_API_KEY / GEMINI_API_KEY
+./bootstrap.sh                # everything: .env generation, the 15-service stack,
+                              # the OTLP ingestion key, the SQL layer, accounts,
+                              # and the Cost Detective agent. Idempotent — re-run anytime.
 
-# 2. the stack (15 services, one ClickHouse)
-docker compose up -d          # first run pulls ~6 GB of images
+# add your free GROQ_API_KEY / GEMINI_API_KEY to .env for real models
+# (optional — the mock-pro model works with zero keys), then:
+docker compose up -d litellm
 
-# 3. bootstrap ClickStack ingestion (one-time)
-#    register the HyperDX admin — this mints the OTLP ingestion key:
-curl -X POST http://localhost:8000/register/password -H 'Content-Type: application/json' \
-  -d '{"email":"wastedspend.demo@gmail.com","password":"WastedSpend!2026","confirmPassword":"WastedSpend!2026"}'
-docker compose exec hyperdx-db mongosh --quiet hyperdx --eval 'db.teams.findOne().apiKey'
-#    → put that value in .env as HYPERDX_INGESTION_API_KEY, then:
-docker compose up -d librechat
-
-# 4. the SQL layer (views, materialized views, THE metric)
-export $(grep CLICKHOUSE_PASSWORD .env)
-for f in sql/05* sql/10* sql/20* sql/30* sql/03*; do
-  docker compose exec -T clickhouse clickhouse-client --password "$CLICKHOUSE_PASSWORD" -n < "$f"
-done
-
-# 5. an app account + the RCA agent
-#    register in the LibreChat UI (http://localhost:3080) with the email from
-#    agent/create-agent.ts (or set LOADGEN_EMAIL/LOADGEN_PASSWORD), then:
-node agent/create-agent.ts
-
-# 6. lights on
+# lights on
 node dashboard/server.ts &    # burn console → http://localhost:8090
 node loadgen/loadgen.ts       # simulated users (Ctrl-C to stop)
 ```
+
+<details><summary>what bootstrap.sh does, step by step (for the curious or the stuck)</summary>
+
+1. checks docker + node ≥ 23
+2. generates `.env` with fresh secrets (kept untouched if it exists)
+3. `docker compose up -d` and waits for ClickHouse, Langfuse, HyperDX, LibreChat health
+4. registers the HyperDX admin — this mints the OTLP ingestion key — and writes it to `.env`
+5. applies the SQL layer in order (readonly user, unified views, golden-signal MVs, wasted_spend)
+6. registers the LibreChat demo account and verifies login
+7. creates/updates the Cost Detective agent via the LibreChat API
+</details>
 
 All URLs, logins, and API details: **[docs/ACCESS.md](docs/ACCESS.md)**.
 
