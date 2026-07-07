@@ -35,7 +35,8 @@ class TraceStitcher(CustomLogger):
             # langfuse trace id := otel trace id — the join key IS the primary key
             md['trace_id'] = otel_trace_id
             md['otel_trace_id'] = otel_trace_id        # also as metadata (redundant, join-friendly)
-            md['otel_parent_span_id'] = parent_span_id
+            md['otel_parent_span_id'] = parent_span_id # enables exact span-hierarchy nesting later
+            md['traceparent'] = tp                     # raw header, full fidelity (version+flags)
             md['stitch'] = 'traceparent'
         else:
             md['stitch'] = 'fallback'
