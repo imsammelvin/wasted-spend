@@ -19,9 +19,8 @@ endpoints:
       apiKey: '${LITELLM_MASTER_KEY}'
       baseURL: 'http://litellm:4000/v1'
       models:
-        # fetch:false + explicit list keeps mock-pro out of the UI picker
-        # (it stays defined in litellm for loadgen/emergency use only)
-        default: ['llama-3.3-70b', 'llama-3.1-8b', 'gemini-flash']
+        # mock-pro: unlimited/$0 (canned reply) — the fallback when free tiers 429
+        default: ['mock-pro', 'llama-3.1-8b', 'llama-3.3-70b', 'gemini-flash']
         fetch: false
       titleConvo: true
       titleModel: 'llama-3.1-8b' # titles must not burn the 70b's small daily quota

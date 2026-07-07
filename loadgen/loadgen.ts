@@ -21,11 +21,11 @@ const CFG = {
   baseUrl: env('LOADGEN_BASE_URL', 'http://localhost:3080'),
   email: env('LOADGEN_EMAIL', 'wastedspend.demo@gmail.com'),
   password: env('LOADGEN_PASSWORD', 'WastedSpend!2026'),
-  // real model by default; watch Groq's ~30 req/min free tier (each message
-  // also costs a title-gen call). mock-pro remains available for volume runs.
-  model: env('LOADGEN_MODEL', 'llama-3.3-70b'),
+  // mock-pro by default: unlimited volume, $0, realistically priced. Switch to
+  // a real model per-run (LOADGEN_MODEL=llama-3.1-8b) within free-tier quotas.
+  model: env('LOADGEN_MODEL', 'mock-pro'),
   users: Number(env('LOADGEN_USERS', '2')),
-  thinkS: Number(env('LOADGEN_THINK_S', '6')),
+  thinkS: Number(env('LOADGEN_THINK_S', '4')),
   patienceS: Number(env('LOADGEN_PATIENCE_S', '30')),
   maxRetries: Number(env('LOADGEN_MAX_RETRIES', '2')),
   newConvoPct: Number(env('LOADGEN_NEW_CONVO_PCT', '0.15')),
