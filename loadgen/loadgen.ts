@@ -24,9 +24,9 @@ const CFG = {
   // mock-pro by default: unlimited volume, $0, realistically priced. Switch to
   // a real model per-run (LOADGEN_MODEL=llama-3.1-8b) within free-tier quotas.
   model: env('LOADGEN_MODEL', 'mock-pro'),
-  users: Number(env('LOADGEN_USERS', '2')),
+  users: Number(env('LOADGEN_USERS', '3')),
   thinkS: Number(env('LOADGEN_THINK_S', '4')),
-  patienceS: Number(env('LOADGEN_PATIENCE_S', '30')),
+  patienceS: Number(env('LOADGEN_PATIENCE_S', '1')),
   maxRetries: Number(env('LOADGEN_MAX_RETRIES', '2')),
   newConvoPct: Number(env('LOADGEN_NEW_CONVO_PCT', '0.15')),
   durationS: Number(env('LOADGEN_DURATION_S', '0')), // 0 = run forever
