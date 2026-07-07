@@ -79,6 +79,8 @@ WITH culprit AS (
       AND SpanKind != 'Server' -- entry span contains everything: symptom, not cause
       AND SpanName NOT LIKE 'middleware%' AND SpanName NOT LIKE 'request handler%'
     GROUP BY TraceId
+    -- attribution SLA: nothing under 1s gets blamed — weak suspects fall to 'unattributed'
+    HAVING slowest_ms >= 1000
 )
 SELECT
     multiIf(w.failed_attempts > 0, 'llm failure → retry',
@@ -170,6 +172,8 @@ culprit AS (
       AND SpanKind != 'Server' -- entry span contains everything: symptom, not cause
       AND SpanName NOT LIKE 'middleware%' AND SpanName NOT LIKE 'request handler%'
     GROUP BY TraceId
+    -- attribution SLA: nothing under 1s gets blamed — weak suspects fall to 'unattributed'
+    HAVING slowest_ms >= 1000
 )
 SELECT
     multiIf(w.failed_attempts > 0, 'llm failure → retry',
